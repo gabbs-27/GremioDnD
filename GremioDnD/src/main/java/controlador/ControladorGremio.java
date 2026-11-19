@@ -15,6 +15,8 @@ import vista.FrmGremio;
 
 public class ControladorGremio implements ActionListener {
 
+    public static final int NIVEL_MAXIMO_GREMIO = 20;
+
     private ArrayList<Aventurero> gremio;
     private FrmGremio vista;
 
@@ -66,6 +68,13 @@ public class ControladorGremio implements ActionListener {
             throw new DatosInvalidosException("La clase " + clase + " no es válida.");
         }
 
+        int nivelesUsados = sumarNiveles();
+        if (nivelesUsados + nuevo.getNivel() > NIVEL_MAXIMO_GREMIO) {
+            int nivelesDisponibles = NIVEL_MAXIMO_GREMIO - nivelesUsados;
+            throw new DatosInvalidosException("El gremio ya suma " + nivelesUsados + " niveles y el máximo es "
+                    + NIVEL_MAXIMO_GREMIO + ". Solo quedan " + nivelesDisponibles + " niveles disponibles.");
+        }
+
         gremio.add(nuevo);
         guardarEnArchivo("REGISTRO -> " + nuevo.toString());
         actualizarVista();
@@ -73,6 +82,14 @@ public class ControladorGremio implements ActionListener {
 
     public ArrayList<Aventurero> getGremio() {
         return gremio;
+    }
+
+    public int sumarNiveles() {
+        int suma = 0;
+        for (Aventurero aventurero : gremio) {
+            suma = suma + aventurero.getNivel();
+        }
+        return suma;
     }
 
     public String simularCombate() {
@@ -149,6 +166,7 @@ public class ControladorGremio implements ActionListener {
                 + ", nivel " + mayorNivel.getNivel() + ")\n"
                 + "Más puntos de vida: " + mayorVida.getNombre() + " (" + mayorVida.getPuntosVida() + " PV)\n"
                 + "Nivel promedio: " + promedioNivel + "\n"
+                + "Niveles usados: " + sumaNiveles + " de " + NIVEL_MAXIMO_GREMIO + "\n"
                 + "Puntos de vida totales del gremio: " + sumaPuntosVida;
     }
 
