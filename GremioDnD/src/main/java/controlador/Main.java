@@ -18,10 +18,8 @@ public class Main {
 
     private static void cargarGremioInicial(ControladorGremio controlador) {
         try {
-            controlador.registrarAventurero("Guerrero", "Thorgar", 7, 64, "Sí");
-            controlador.registrarAventurero("Mago", "Elandra", 5, 28, "4");
-            controlador.registrarAventurero("Clérigo", "Aldric", 4, 31, "Pelor");
-            controlador.registrarAventurero("Pícaro", "Sombra", 3, 21, "Sí");
+            controlador.registrarAventurero("Guerrero", "Thorgar", 1, 12, "Sí");
+            controlador.registrarAventurero("Mago", "Elandra", 1, 8, "2");
         } catch (DatosInvalidosException ex) {
             System.out.println("No se pudo cargar el gremio inicial: " + ex.getMessage());
         }
