@@ -1,14 +1,9 @@
 package controlador;
 
-import java.awt.Toolkit;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
-import java.text.Normalizer;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import javax.swing.JTextField;
 import modelo.Aventurero;
 import modelo.Clerigo;
 import modelo.DatosInvalidosException;
@@ -18,28 +13,35 @@ import modelo.Mago;
 import modelo.Picaro;
 import vista.FrmGremio;
 
-public class ControladorGremio {
-    private final ArrayList<Aventurero> gremio;
-    private final FrmGremio vista;
+public class ControladorGremio implements ActionListener {
+
+    private ArrayList<Aventurero> gremio;
+    private FrmGremio vista;
 
     public ControladorGremio(FrmGremio vista) {
         this.gremio = new ArrayList<>();
         this.vista = vista;
         if (vista != null) {
-            inicializarEventos();
-            accionCambiarClase();
+            vista.getBtnRegistrar().addActionListener(this);
+            vista.getBtnCombate().addActionListener(this);
+            vista.getBtnReportes().addActionListener(this);
+            vista.getCmbClase().addActionListener(this);
+            cambiarCampoAtributo();
             actualizarVista();
         }
     }
 
-    private void inicializarEventos() {
-        vista.getBtnRegistrar().addActionListener(e -> accionRegistrar());
-        vista.getCmbClase().addActionListener(e -> accionCambiarClase());
-        vista.getBtnCombate().addActionListener(e -> accionCombate());
-
-        soloNumeros(vista.getTxtNivel(), 2);
-        soloNumeros(vista.getTxtPuntosVida(), 4);
-        soloNumerosSiEsMago(vista.getTxtAtributo());
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == vista.getBtnRegistrar()) {
+            accionRegistrar();
+        } else if (e.getSource() == vista.getBtnCombate()) {
+            accionCombate();
+        } else if (e.getSource() == vista.getBtnReportes()) {
+            accionReportes();
+        } else if (e.getSource() == vista.getCmbClase()) {
+            cambiarCampoAtributo();
+        }
     }
 
     public void registrarAventurero(String clase, String nombre, int nivel, int puntosVida, String atributo)
@@ -48,33 +50,179 @@ public class ControladorGremio {
             throw new DatosInvalidosException("El nombre del aventurero es obligatorio.");
         }
         if (existeNombre(nombre)) {
-            throw new DatosInvalidosException("Ya existe un aventurero llamado \"" + nombre.trim()
-                    + "\" en el gremio. Elige otro nombre.");
+            throw new DatosInvalidosException("Ya existe un aventurero llamado " + nombre.trim() + " en el gremio.");
         }
-        Aventurero nuevo = crearAventurero(clase, nombre, nivel, puntosVida, atributo);
+
+        Aventurero nuevo;
+        if (clase.equals("Guerrero")) {
+            nuevo = new Guerrero(nombre, nivel, puntosVida, atributo.equals("Sí"));
+        } else if (clase.equals("Mago")) {
+            nuevo = new Mago(nombre, nivel, puntosVida, convertirEntero(atributo, "espacios de conjuro"));
+        } else if (clase.equals("Clérigo")) {
+            nuevo = new Clerigo(nombre, nivel, puntosVida, atributo);
+        } else if (clase.equals("Pícaro")) {
+            nuevo = new Picaro(nombre, nivel, puntosVida, atributo.equals("Sí"));
+        } else {
+            throw new DatosInvalidosException("La clase " + clase + " no es válida.");
+        }
+
         gremio.add(nuevo);
-        guardarEnArchivo("REGISTRO -> " + nuevo);
+        guardarEnArchivo("REGISTRO -> " + nuevo.toString());
         actualizarVista();
     }
 
-    private Aventurero crearAventurero(String clase, String nombre, int nivel, int puntosVida, String atributo)
-            throws DatosInvalidosException {
-        switch (normalizar(clase)) {
-            case "guerrero":
-                return new Guerrero(nombre, nivel, puntosVida, interpretarSiNo(atributo));
-            case "mago":
-                return new Mago(nombre, nivel, puntosVida, convertirEntero(atributo, "espacios de conjuro"));
-            case "clerigo":
-                return new Clerigo(nombre, nivel, puntosVida, atributo);
-            case "picaro":
-                return new Picaro(nombre, nivel, puntosVida, interpretarSiNo(atributo));
-            default:
-                throw new DatosInvalidosException("La clase \"" + clase + "\" no es válida.");
+    public ArrayList<Aventurero> getGremio() {
+        return gremio;
+    }
+
+    public String simularCombate() {
+        if (gremio.isEmpty()) {
+            return "El gremio no tiene aventureros. Registra al menos uno para combatir.";
+        }
+        String relato = "===== INICIO DE COMBATE =====\n";
+        guardarEnArchivo("===== INICIO DE COMBATE =====");
+
+        for (Aventurero aventurero : gremio) {
+            String mensaje = aventurero.realizarAccion();
+            relato = relato + mensaje + "\n";
+            guardarEnArchivo(mensaje);
+        }
+
+        relato = relato + "===== FIN DE COMBATE =====";
+        guardarEnArchivo("===== FIN DE COMBATE =====");
+        actualizarVista();
+        return relato;
+    }
+
+    public String generarReporteComposicion() {
+        int guerreros = 0;
+        int magos = 0;
+        int clerigos = 0;
+        int picaros = 0;
+
+        for (Aventurero aventurero : gremio) {
+            String clase = aventurero.getNombreClase();
+            if (clase.equals("Guerrero")) {
+                guerreros++;
+            } else if (clase.equals("Mago")) {
+                magos++;
+            } else if (clase.equals("Clérigo")) {
+                clerigos++;
+            } else if (clase.equals("Pícaro")) {
+                picaros++;
+            }
+        }
+
+        return "REPORTE 1 - COMPOSICIÓN DEL GREMIO\n"
+                + "Guerreros: " + guerreros + "\n"
+                + "Magos: " + magos + "\n"
+                + "Clérigos: " + clerigos + "\n"
+                + "Pícaros: " + picaros + "\n"
+                + "Total del gremio: " + gremio.size();
+    }
+
+    public String generarReporteEstadisticas() {
+        if (gremio.isEmpty()) {
+            return "REPORTE 2 - ESTADÍSTICAS DEL GREMIO\nNo hay aventureros registrados.";
+        }
+        Aventurero mayorNivel = gremio.get(0);
+        Aventurero mayorVida = gremio.get(0);
+        int sumaNiveles = 0;
+        int sumaPuntosVida = 0;
+
+        for (Aventurero aventurero : gremio) {
+            if (aventurero.getNivel() > mayorNivel.getNivel()) {
+                mayorNivel = aventurero;
+            }
+            if (aventurero.getPuntosVida() > mayorVida.getPuntosVida()) {
+                mayorVida = aventurero;
+            }
+            sumaNiveles = sumaNiveles + aventurero.getNivel();
+            sumaPuntosVida = sumaPuntosVida + aventurero.getPuntosVida();
+        }
+
+        double promedioNivel = (double) sumaNiveles / gremio.size();
+        promedioNivel = Math.round(promedioNivel * 100) / 100.0;
+
+        return "REPORTE 2 - ESTADÍSTICAS DEL GREMIO\n"
+                + "Mayor nivel: " + mayorNivel.getNombre() + " (" + mayorNivel.getNombreClase()
+                + ", nivel " + mayorNivel.getNivel() + ")\n"
+                + "Más puntos de vida: " + mayorVida.getNombre() + " (" + mayorVida.getPuntosVida() + " PV)\n"
+                + "Nivel promedio: " + promedioNivel + "\n"
+                + "Puntos de vida totales del gremio: " + sumaPuntosVida;
+    }
+
+    private void accionRegistrar() {
+        try {
+            String clase = (String) vista.getCmbClase().getSelectedItem();
+            String nombre = vista.getTxtNombre().getText();
+            int nivel = convertirEntero(vista.getTxtNivel().getText(), "nivel");
+            int puntosVida = convertirEntero(vista.getTxtPuntosVida().getText(), "puntos de vida");
+
+            String atributo;
+            if (vista.getChkAtributo().isVisible()) {
+                if (vista.getChkAtributo().isSelected()) {
+                    atributo = "Sí";
+                } else {
+                    atributo = "No";
+                }
+            } else {
+                atributo = vista.getTxtAtributo().getText();
+            }
+
+            registrarAventurero(clase, nombre, nivel, puntosVida, atributo);
+            vista.limpiarFormulario();
+            vista.mostrarMensaje(nombre.trim() + " se ha unido al gremio como " + clase + ".");
+        } catch (DatosInvalidosException ex) {
+            vista.mostrarError(ex.getMessage());
         }
     }
 
-    public List<Aventurero> getGremio() {
-        return Collections.unmodifiableList(gremio);
+    private void accionCombate() {
+        if (gremio.isEmpty()) {
+            vista.mostrarMensaje(simularCombate());
+        } else {
+            vista.agregarBitacora(simularCombate() + "\n");
+        }
+    }
+
+    private void accionReportes() {
+        if (gremio.isEmpty()) {
+            vista.mostrarMensaje("No hay aventureros para generar reportes.");
+        } else {
+            String reportes = generarReporteComposicion() + "\n\n" + generarReporteEstadisticas();
+            vista.agregarBitacora(reportes + "\n");
+            vista.mostrarMensaje(reportes);
+        }
+    }
+
+    private void cambiarCampoAtributo() {
+        String clase = (String) vista.getCmbClase().getSelectedItem();
+
+        if (clase.equals("Guerrero")) {
+            vista.getLblAtributo().setText("Armadura pesada:");
+            vista.getChkAtributo().setText("Usa armadura pesada");
+            vista.getChkAtributo().setVisible(true);
+            vista.getTxtAtributo().setVisible(false);
+        } else if (clase.equals("Mago")) {
+            vista.getLblAtributo().setText("Espacios de conjuro:");
+            vista.getTxtAtributo().setToolTipText("Número entero mayor que 0");
+            vista.getChkAtributo().setVisible(false);
+            vista.getTxtAtributo().setVisible(true);
+        } else if (clase.equals("Clérigo")) {
+            vista.getLblAtributo().setText("Dios venerado:");
+            vista.getTxtAtributo().setToolTipText("Ej: Pelor, Tyr, Moradin");
+            vista.getChkAtributo().setVisible(false);
+            vista.getTxtAtributo().setVisible(true);
+        } else if (clase.equals("Pícaro")) {
+            vista.getLblAtributo().setText("Herramientas de ladrón:");
+            vista.getChkAtributo().setText("Tiene herramientas de ladrón");
+            vista.getChkAtributo().setVisible(true);
+            vista.getTxtAtributo().setVisible(false);
+        }
+
+        vista.getTxtAtributo().setText("");
+        vista.getChkAtributo().setSelected(false);
     }
 
     private boolean existeNombre(String nombre) {
@@ -92,155 +240,24 @@ public class ControladorGremio {
         }
     }
 
-    private void accionRegistrar() {
-        try {
-            String clase = claseSeleccionada();
-            String nombre = vista.getTxtNombre().getText();
-            int nivel = convertirEntero(vista.getTxtNivel().getText(), "nivel");
-            int puntosVida = convertirEntero(vista.getTxtPuntosVida().getText(), "puntos de vida");
-            String atributo = vista.getChkAtributo().isVisible()
-                    ? (vista.getChkAtributo().isSelected() ? "Sí" : "No")
-                    : vista.getTxtAtributo().getText();
-
-            registrarAventurero(clase, nombre, nivel, puntosVida, atributo);
-            vista.limpiarFormulario();
-            vista.mostrarMensaje("¡" + nombre.trim() + " se ha unido al gremio como " + clase + "!");
-        } catch (DatosInvalidosException ex) {
-            vista.mostrarError(ex.getMessage());
-        }
-    }
-
-    private void accionCambiarClase() {
-        String clase = normalizar(claseSeleccionada());
-        boolean esSiNo = clase.equals("guerrero") || clase.equals("picaro");
-
-        switch (clase) {
-            case "guerrero":
-                vista.getLblAtributo().setText("Armadura pesada:");
-                vista.getChkAtributo().setText("Usa armadura pesada");
-                vista.getChkAtributo().setToolTipText("Marca la casilla si el guerrero lleva armadura pesada");
-                break;
-            case "mago":
-                vista.getLblAtributo().setText("Espacios de conjuro:");
-                vista.getTxtAtributo().setToolTipText("Número entero mayor que 0 (un mago de nivel 1 tiene 2)");
-                break;
-            case "clerigo":
-                vista.getLblAtributo().setText("Dios venerado:");
-                vista.getTxtAtributo().setToolTipText("Ej: Pelor, Tyr, Moradin");
-                break;
-            case "picaro":
-                vista.getLblAtributo().setText("Herramientas de ladrón:");
-                vista.getChkAtributo().setText("Tiene herramientas de ladrón");
-                vista.getChkAtributo().setToolTipText("Marca la casilla si el pícaro tiene ganzúas y herramientas");
-                break;
-            default:
-                vista.getLblAtributo().setText("Atributo especial:");
-        }
-        vista.getTxtAtributo().setVisible(!esSiNo);
-        vista.getChkAtributo().setVisible(esSiNo);
-        vista.getTxtAtributo().setText("");
-        vista.getChkAtributo().setSelected(false);
-    }
-
-    public String simularCombate() {
-        if (gremio.isEmpty()) {
-            return "El gremio no tiene aventureros. Registra al menos uno para combatir.";
-        }
-        StringBuilder relato = new StringBuilder("===== INICIO DE COMBATE =====\n");
-        guardarEnArchivo("===== INICIO DE COMBATE =====");
-
-        for (Aventurero aventurero : gremio) {
-            String mensaje = aventurero.realizarAccion();
-            relato.append(mensaje).append("\n");
-            guardarEnArchivo(mensaje);
-        }
-
-        relato.append("===== FIN DE COMBATE =====");
-        guardarEnArchivo("===== FIN DE COMBATE =====");
-        actualizarVista();
-        return relato.toString();
-    }
-
-    private void accionCombate() {
-        if (gremio.isEmpty()) {
-            vista.mostrarMensaje(simularCombate());
-            return;
-        }
-        vista.agregarBitacora(simularCombate() + "\n");
-    }
-
     private void guardarEnArchivo(String texto) {
         try {
             GestorArchivo.anexar(texto);
         } catch (IOException ex) {
-            String aviso = "No se pudo escribir en " + GestorArchivo.RUTA_ARCHIVO + ": " + ex.getMessage();
             if (vista != null) {
-                vista.mostrarError(aviso);
-            } else {
-                System.err.println(aviso);
+                vista.mostrarError("No se pudo escribir en " + GestorArchivo.RUTA_ARCHIVO);
             }
         }
     }
 
-    private String claseSeleccionada() {
-        Object seleccion = vista.getCmbClase().getSelectedItem();
-        return seleccion == null ? "" : seleccion.toString();
-    }
-
-    private static int convertirEntero(String texto, String campo) throws DatosInvalidosException {
+    private int convertirEntero(String texto, String campo) throws DatosInvalidosException {
         if (texto == null || texto.trim().isEmpty()) {
-            throw new DatosInvalidosException("El campo \"" + campo + "\" es obligatorio.");
+            throw new DatosInvalidosException("El campo " + campo + " es obligatorio.");
         }
         try {
             return Integer.parseInt(texto.trim());
         } catch (NumberFormatException ex) {
-            throw new DatosInvalidosException("El campo \"" + campo + "\" debe ser un número entero.");
+            throw new DatosInvalidosException("El campo " + campo + " debe ser un número entero.");
         }
-    }
-
-    private static boolean interpretarSiNo(String texto) {
-        String valor = normalizar(texto);
-        return valor.equals("si") || valor.equals("s") || valor.equals("true") || valor.equals("1");
-    }
-
-    private static String normalizar(String texto) {
-        if (texto == null) {
-            return "";
-        }
-        String sinTildes = Normalizer.normalize(texto.trim(), Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-        return sinTildes.toLowerCase();
-    }
-
-    private static boolean esDigitoOEdicion(char c) {
-        return Character.isDigit(c) || c == KeyEvent.VK_BACK_SPACE || c == KeyEvent.VK_DELETE;
-    }
-
-    private void soloNumeros(JTextField campo, int maxDigitos) {
-        campo.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyTyped(KeyEvent e) {
-                char c = e.getKeyChar();
-                boolean esEdicion = c == KeyEvent.VK_BACK_SPACE || c == KeyEvent.VK_DELETE;
-                boolean excedeLargo = !esEdicion && campo.getText().length() >= maxDigitos
-                        && campo.getSelectedText() == null;
-                if (!esDigitoOEdicion(c) || excedeLargo) {
-                    e.consume();
-                    Toolkit.getDefaultToolkit().beep();
-                }
-            }
-        });
-    }
-
-    private void soloNumerosSiEsMago(JTextField campo) {
-        campo.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyTyped(KeyEvent e) {
-                boolean esMago = normalizar(claseSeleccionada()).equals("mago");
-                if (esMago && !esDigitoOEdicion(e.getKeyChar())) {
-                    e.consume();
-                    Toolkit.getDefaultToolkit().beep();
-                }
-            }
-        });
     }
 }
