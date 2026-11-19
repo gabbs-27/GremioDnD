@@ -1,0 +1,14 @@
+# Archivos generados por Maven
+target/
+
+# Configuración local de NetBeans
+nbproject/private/
+nbactions.xml
+nb-configuration.xml
+
+# Historial generado al ejecutar el programa
+registro_gremio.txt
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

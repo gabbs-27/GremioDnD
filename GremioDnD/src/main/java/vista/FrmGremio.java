@@ -1,8 +1,11 @@
 package vista;
 
+import java.util.ArrayList;
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
+import modelo.Aventurero;
 
 public class FrmGremio extends javax.swing.JFrame {
-
 
     public FrmGremio() {
         initComponents();
@@ -350,35 +353,31 @@ public class FrmGremio extends javax.swing.JFrame {
     }
 
     public void mostrarMensaje(String mensaje) {
-        javax.swing.JOptionPane.showMessageDialog(this, mensaje,
-                "Gremio de Aventureros", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, mensaje);
     }
 
     public void mostrarError(String mensaje) {
-        javax.swing.JOptionPane.showMessageDialog(this, mensaje,
-                "Datos inválidos", javax.swing.JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(this, mensaje, "Datos inválidos", JOptionPane.ERROR_MESSAGE);
     }
 
     public void agregarBitacora(String texto) {
         txaBitacora.append(texto + "\n");
-        txaBitacora.setCaretPosition(txaBitacora.getDocument().getLength());
     }
 
-    public void cargarTabla(java.util.List<modelo.Aventurero> lista) {
-        javax.swing.table.DefaultTableModel modeloTabla = new javax.swing.table.DefaultTableModel(
-                new Object[]{"Clase", "Nombre", "Nivel", "PV", "Dado de golpe", "Atributo especial"}, 0) {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
-        for (modelo.Aventurero a : lista) {
-            modeloTabla.addRow(new Object[]{a.getNombreClase(), a.getNombre(), a.getNivel(),
-                a.getPuntosVida(), a.getDadoGolpe(), a.getAtributoEspecial()});
+    public void cargarTabla(ArrayList<Aventurero> lista) {
+        DefaultTableModel modeloTabla = (DefaultTableModel) tblGremio.getModel();
+        modeloTabla.setRowCount(0);
+        for (Aventurero aventurero : lista) {
+            Object[] fila = {
+                aventurero.getNombreClase(),
+                aventurero.getNombre(),
+                aventurero.getNivel(),
+                aventurero.getPuntosVida(),
+                aventurero.getDadoGolpe(),
+                aventurero.getAtributoEspecial()
+            };
+            modeloTabla.addRow(fila);
         }
-        tblGremio.setModel(modeloTabla);
-        tblGremio.setRowHeight(22);
-        tblGremio.getColumnModel().getColumn(5).setPreferredWidth(190);
     }
 
     public void limpiarFormulario() {
@@ -387,7 +386,6 @@ public class FrmGremio extends javax.swing.JFrame {
         txtPuntosVida.setText("");
         txtAtributo.setText("");
         chkAtributo.setSelected(false);
-        txtNombre.requestFocus();
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
