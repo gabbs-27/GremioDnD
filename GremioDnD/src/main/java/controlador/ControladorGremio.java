@@ -35,6 +35,7 @@ public class ControladorGremio {
     private void inicializarEventos() {
         vista.getBtnRegistrar().addActionListener(e -> accionRegistrar());
         vista.getCmbClase().addActionListener(e -> accionCambiarClase());
+        vista.getBtnCombate().addActionListener(e -> accionCombate());
 
         soloNumeros(vista.getTxtNivel(), 2);
         soloNumeros(vista.getTxtPuntosVida(), 4);
@@ -139,6 +140,33 @@ public class ControladorGremio {
         vista.getChkAtributo().setVisible(esSiNo);
         vista.getTxtAtributo().setText("");
         vista.getChkAtributo().setSelected(false);
+    }
+
+    public String simularCombate() {
+        if (gremio.isEmpty()) {
+            return "El gremio no tiene aventureros. Registra al menos uno para combatir.";
+        }
+        StringBuilder relato = new StringBuilder("===== INICIO DE COMBATE =====\n");
+        guardarEnArchivo("===== INICIO DE COMBATE =====");
+
+        for (Aventurero aventurero : gremio) {
+            String mensaje = aventurero.realizarAccion();
+            relato.append(mensaje).append("\n");
+            guardarEnArchivo(mensaje);
+        }
+
+        relato.append("===== FIN DE COMBATE =====");
+        guardarEnArchivo("===== FIN DE COMBATE =====");
+        actualizarVista();
+        return relato.toString();
+    }
+
+    private void accionCombate() {
+        if (gremio.isEmpty()) {
+            vista.mostrarMensaje(simularCombate());
+            return;
+        }
+        vista.agregarBitacora(simularCombate() + "\n");
     }
 
     private void guardarEnArchivo(String texto) {
